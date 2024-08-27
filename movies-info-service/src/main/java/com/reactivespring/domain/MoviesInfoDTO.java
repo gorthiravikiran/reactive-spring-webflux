@@ -23,8 +23,7 @@ public class MoviesInfoDTO {
     @NotNull(message="MoviesInfo.year cannot be null/empty")
     @Positive
     private Integer year;
-    @NotNull(message="MoviesInfo.cast cannot be null/empty")
-    private List<String> cast;
+    private List<@NotBlank(message="MoviesInfo.cast cannot be null/empty") String> cast;
     @NotNull(message="MoviesInfo.releaseDate cannot be null/empty")
     private String releaseDate;
 

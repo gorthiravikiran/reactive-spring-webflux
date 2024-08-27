@@ -12,11 +12,12 @@ import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWeb
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.time.LocalDate;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -55,7 +56,7 @@ class MoviesInfoControllerIntegrationTest {
                 .uri(MOVIE_ADD_URL)
                 .bodyValue(moviesInfo)
                 .exchange()
-                .expectStatus().isCreated()
+                .expectStatus().isOk()
                 .expectBody(MoviesInfoDTO.class)
                 .consumeWith(moviesInfoEntityExchangeResult -> {
                     var savedMovieInfo = moviesInfoEntityExchangeResult.getResponseBody();
@@ -76,7 +77,7 @@ class MoviesInfoControllerIntegrationTest {
                 .uri(MOVIE_ADD_URL)
                 .bodyValue(moviesInfo)
                 .exchange()
-                .expectStatus().is5xxServerError()
+                .expectStatus().is4xxClientError()
                 .expectBody(MoviesInfoException.class);
     }
 
@@ -114,7 +115,7 @@ class MoviesInfoControllerIntegrationTest {
             .uri("/moviesInfo/update/The Dark Knight-2008")
             .bodyValue(moviesInfoDTO)
             .exchange()
-            .expectStatus().isAccepted()
+            .expectStatus().isOk()
             .expectBody(MoviesInfoDTO.class)
             .consumeWith(moviesInfoEntityExchangeResult1 -> {
                 var updatedMovieInfo = moviesInfoEntityExchangeResult1.getResponseBody();
@@ -129,6 +130,22 @@ class MoviesInfoControllerIntegrationTest {
     }
 
     @Test
+    void updateMovieInfo_NotExisting() {
+        //given
+        MoviesInfoDTO moviesInfoDTO = new MoviesInfoDTO("The Dark Knight-2008", "The Dark Knight", 2008, List.of("Chritian Bale", "HeathLedger"), "2008-07-21");
+
+        //when
+        webTestClient.put()
+                .uri("/moviesInfo/update/The Dark Knight1-2008")
+                .bodyValue(moviesInfoDTO)
+                .exchange()
+                .expectStatus()
+                .isNotFound();
+
+        //then
+    }
+
+    @Test
     void deleteMovieInfo() {
         webTestClient.delete()
                 .uri("/moviesInfo/delete/The Dark Knight-2008")
@@ -138,11 +155,31 @@ class MoviesInfoControllerIntegrationTest {
     }
 
     @Test
-    void deleteAllMovieInfo() {
+    void deleteAllMovieInfos() {
         webTestClient.delete()
                 .uri("/moviesInfo/deleteAll")
                 .exchange()
                 .expectStatus().isAccepted()
                 .expectBody(Void.class);
+    }
+
+    @Test
+    void deleteAllMovieInfo_NotExisting() {
+        webTestClient.delete()
+                .uri("/moviesInfo/deleteAll")
+                .exchange()
+                .expectStatus().is5xxServerError();
+    }
+
+    @Test
+    void getMovieInfoByYear() {
+        var uri = UriComponentsBuilder.fromUriString("/moviesInfo/get")
+                .queryParam("year", 2008).buildAndExpand().toUri();
+        webTestClient.get()
+                .uri(uri)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBodyList(MoviesInfoDTO.class)
+                .hasSize(1);
     }
 }

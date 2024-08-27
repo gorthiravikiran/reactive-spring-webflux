@@ -1,6 +1,5 @@
 package com.reactivespring.service;
 
-import com.reactivespring.domain.MoviesInfo;
 import com.reactivespring.domain.MoviesInfoDTO;
 import com.reactivespring.exception.MoviesInfoException;
 import com.reactivespring.repository.MoviesInfoRepository;
@@ -60,5 +59,9 @@ public class MoviesInfoService {
 
     public Mono<Void> deleteAllMovies() {
         return moviesInfoRepository.deleteAll();
+    }
+
+    public Flux<MoviesInfoDTO> getMovieInfosByYear(Integer year) {
+        return moviesInfoRepository.findByYear(year).map(MoviesInfoDTO::new);
     }
 }

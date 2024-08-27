@@ -3,16 +3,13 @@ package com.reactivespring.controller;
 import com.reactivespring.domain.MoviesInfo;
 import com.reactivespring.domain.MoviesInfoDTO;
 import com.reactivespring.exception.MoviesInfoException;
-import com.reactivespring.repository.MoviesInfoRepository;
 import com.reactivespring.service.MoviesInfoService;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -20,9 +17,8 @@ import reactor.core.publisher.Mono;
 import java.time.LocalDate;
 import java.util.List;
 
-import static org.hamcrest.CoreMatchers.any;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
@@ -35,14 +31,8 @@ class MoviesInfoControllerTest {
     @Autowired
     WebTestClient webTestClient;
 
-    @Autowired
-    MoviesInfoController moviesInfoController;
-
     @MockBean
     MoviesInfoService moviesInfoServiceMock;
-
-    @MockBean
-    MoviesInfoRepository moviesInfoRepositoryMock;
 
     MoviesInfo movieInfo, movieInfo1, movieInfo2;
 
@@ -69,7 +59,7 @@ class MoviesInfoControllerTest {
                 .uri(MOVIE_ADD_URL)
                 .bodyValue(moviesInfoDTO)
                 .exchange()
-                .expectStatus().isCreated()
+                .expectStatus().isOk()
                 .expectBody(MoviesInfoDTO.class)
                 .consumeWith(moviesInfoEntityExchangeResult -> {
                     var savedMovieInfo = moviesInfoEntityExchangeResult.getResponseBody();
@@ -81,7 +71,7 @@ class MoviesInfoControllerTest {
     @Test
     void addMovieInfo_validation() {
         //given
-        MoviesInfoDTO moviesInfoDTO = new MoviesInfoDTO("Inception-2010", null, -2010, List.of("Leonardo DiCaprio", "Joseph Gordon-Levitt"), "2010-07-16");
+        MoviesInfoDTO moviesInfoDTO = new MoviesInfoDTO("Inception-2010", "Inception", 2010, List.of(""), "2010-07-16");
 
         //then
         webTestClient.post()
@@ -94,7 +84,7 @@ class MoviesInfoControllerTest {
                     var errorMessage = moviesInfoEntityExchangeResult.getResponseBody();
                     System.out.println("errorMessage = " + errorMessage);
                     assert errorMessage != null;
-//                    assertEquals("MoviesInfo.name cannot be null/empty", errorMessage);
+                    assertTrue(errorMessage.contains("MoviesInfo.cast cannot be null/empty"));
                 });
     }
 
@@ -161,7 +151,7 @@ class MoviesInfoControllerTest {
             .uri("/moviesInfo/update/The Dark Knight-2008")
             .bodyValue(moviesInfoDTO)
             .exchange()
-            .expectStatus().isAccepted()
+            .expectStatus().isOk()
             .expectBody(MoviesInfoDTO.class)
             .consumeWith(moviesInfoEntityExchangeResult1 -> {
                 var updatedMovieInfo = moviesInfoEntityExchangeResult1.getResponseBody();
@@ -182,7 +172,7 @@ class MoviesInfoControllerTest {
         webTestClient.delete()
                 .uri("/moviesInfo/delete/The Dark Knight-2008")
                 .exchange()
-                .expectStatus().isAccepted()
+                .expectStatus().isOk()
                 .expectBody(Void.class);
     }
 
@@ -197,5 +187,21 @@ class MoviesInfoControllerTest {
                 .exchange()
                 .expectStatus().isAccepted()
                 .expectBody(Void.class);
+    }
+
+    @Test
+    void getMovieInfosByYear() {
+        //when
+        when(moviesInfoServiceMock.getMovieInfosByYear(2008)).thenReturn(Flux.just(movieInfo1).map(MoviesInfoDTO::new));
+
+        //then
+        webTestClient.get()
+                .uri(uriBuilder -> uriBuilder.path("/moviesInfo/get")
+                        .queryParam("year", 2008)
+                        .build())
+                .exchange()
+                .expectStatus().isOk()
+                .expectBodyList(MoviesInfoDTO.class)
+                .hasSize(1);
     }
 }
